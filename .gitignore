@@ -1,0 +1,69 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+.venv/
+venv/
+env/
+
+# Environment Variables
+.env
+
+# IDE
+.vscode/
+.idea/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Logs
+*.log
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Python Build
+build/
+dist/
+*.egg-info/
+
+# FastAPI Cache
+.pytest_cache/
+.mypy_cache/
+
+# PostgreSQL
+*.db
+*.sqlite3
+
+# Node
+node_modules/
+
+# React Build
+frontend/dist/
+frontend/build/
+
+# Uploaded Files
+storage/uploads/*
+!storage/uploads/.gitkeep
+
+# Generated JSON
+storage/json/*
+!storage/json/.gitkeep
+
+# Generated Excel
+storage/excel/*
+!storage/excel/.gitkeep
+
+# Generated Page Images
+storage/page_images/*
+!storage/page_images/.gitkeep
+
+# Ray
+ray_results/
+
+# Coverage
+.coverage
+htmlcov/

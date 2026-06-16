@@ -1,0 +1,99 @@
+{
+    "categories": [
+        {
+            "name": "Invoice",
+            "description": "A commercial document issued by a seller to a buyer requesting payment for goods or services.",
+            "keywords": [
+                "invoice",
+                "invoice number",
+                "tax invoice",
+                "vendor",
+                "customer",
+                "total amount",
+                "due date",
+                "gst",
+                "payment"
+            ]
+        },
+        {
+            "name": "Medical Report",
+            "description": "A healthcare document containing patient information, diagnosis, prescriptions, treatments, or laboratory results.",
+            "keywords": [
+                "patient",
+                "doctor",
+                "hospital",
+                "diagnosis",
+                "prescription",
+                "medical report",
+                "laboratory",
+                "treatment",
+                "clinical"
+            ]
+        },
+        {
+            "name": "Bank Statement",
+            "description": "A financial document showing account activity, balances, credits, debits, and transaction history.",
+            "keywords": [
+                "account number",
+                "statement period",
+                "transaction",
+                "debit",
+                "credit",
+                "balance",
+                "bank",
+                "withdrawal",
+                "deposit"
+            ]
+        },
+        {
+            "name": "Sports Article",
+            "description": "An article discussing sports events, teams, athletes, matches, tournaments, or sports analysis.",
+            "keywords": [
+                "match",
+                "team",
+                "player",
+                "tournament",
+                "league",
+                "score",
+                "championship",
+                "sports",
+                "coach"
+            ]
+        },
+        {
+            "name": "News",
+            "description": "A general news article reporting current events, politics, business, technology, society, or international affairs.",
+            "keywords": [
+                "breaking news",
+                "government",
+                "election",
+                "economy",
+                "industry",
+                "technology",
+                "policy",
+                "report",
+                "announcement"
+            ]
+        },
+        {
+            "name": "Weather",
+            "description": "A document containing weather forecasts, climate information, meteorological observations, or weather alerts.",
+            "keywords": [
+                "forecast",
+                "temperature",
+                "rainfall",
+                "humidity",
+                "wind speed",
+                "weather",
+                "storm",
+                "climate",
+                "precipitation"
+            ]
+        },
+        {
+            "name": "Unknown",
+            "description": "A document that cannot be reliably classified into any supported category due to insufficient, ambiguous, or unrelated content.",
+            "keywords": []
+        }
+    ]
+}
