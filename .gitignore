@@ -67,3 +67,24 @@ ray_results/
 # Coverage
 .coverage
 htmlcov/
+
+#storage files
+sample_segmented.json
+document_segmented.json
+document_segmented.xlsx
+sample_segmented.xlsx
+~$sample_segmented.xlsx
+sample1_segmented.json
+sample1_segmented.xlsx
+
+
+#sample files
+sample.pdf
+sample1.pdf
+
+#test files
+test_agent.py
+test_api.py
+test_document.py
+test_ocr.py
+test_voting.py
