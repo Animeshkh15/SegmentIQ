@@ -1,0 +1,75 @@
+{
+    "document_name": "sample.pdf",
+    "agent_results": [
+        {
+            "page_number": 1,
+            "agents": [
+                {
+                    "agent_id": 1,
+                    "success": true,
+                    "category": "Medical Report",
+                    "reasoning": "The document is classified as a Medical Report because it contains patient information, diagnosis, and treatment details, including prescription and doctor's name. Key information found on the page includes patient name, age, diagnosis, and prescription.",
+                    "error": null
+                },
+                {
+                    "agent_id": 2,
+                    "success": true,
+                    "category": "Medical Report",
+                    "reasoning": "This document is classified as a Medical Report because it contains patient information, diagnosis, and treatment details, including a prescription and doctor's name. The presence of key information such as patient name, age, and diagnosis confirms the document's primary purpose as a medical report.",
+                    "error": null
+                },
+                {
+                    "agent_id": 3,
+                    "success": true,
+                    "category": "Medical Report",
+                    "reasoning": "The document is classified as a Medical Report because it contains patient information, diagnosis, treatment details, and prescription, which are key elements of a medical report. The presence of patient name, age, diagnosis, and doctor's name further supports this classification.",
+                    "error": null
+                },
+                {
+                    "agent_id": 4,
+                    "success": true,
+                    "category": "Medical Report",
+                    "reasoning": "The document is classified as a Medical Report because it contains patient information, diagnosis, and treatment details, including a prescription and doctor's name. Key information found on the page includes the patient's name, age, diagnosis, and prescribed treatment.",
+                    "error": null
+                },
+                {
+                    "agent_id": 5,
+                    "success": true,
+                    "category": "Medical Report",
+                    "reasoning": "The document is classified as a Medical Report because it contains patient information, diagnosis, and treatment details, including a prescription and doctor's name. Key information found on the page includes patient name, age, diagnosis, and prescription.",
+                    "error": null
+                }
+            ]
+        }
+    ],
+    "voting_results": [
+        {
+            "page_number": 1,
+            "category": "Medical Report",
+            "confidence": 1.0,
+            "reasoning": "The document is classified as a Medical Report because it contains patient information, diagnosis, and treatment details, including prescription and doctor's name. Key information found on the page includes patient name, age, diagnosis, and prescription.",
+            "review_required": false
+        }
+    ],
+    "review_queue": [],
+    "page_results": [
+        {
+            "page_number": 1,
+            "category": "Medical Report",
+            "confidence": 1.0,
+            "reasoning": "The document is classified as a Medical Report because it contains patient information, diagnosis, and treatment details, including prescription and doctor's name. Key information found on the page includes patient name, age, diagnosis, and prescription.",
+            "review_required": false
+        }
+    ],
+    "segments": [
+        {
+            "segment_id": 1,
+            "category": "Medical Report",
+            "start_page": 1,
+            "end_page": 1,
+            "pages": [
+                1
+            ]
+        }
+    ]
+}
