@@ -7,14 +7,12 @@ from app.core.voting import VotingEngine
 from app.core.review_manager import ReviewManager
 from app.core.boundary import BoundaryDetector
 from app.core.ocr import OCRService
-from app.schemas.schemas import (
-    PageClassification,
-    ReviewTask,
-    Segment,
-    PipelineResult
-)
+from app.schemas.schemas import PageClassification, ReviewTask, Segment, PipelineResult
 from app.exporters.json_exporter import JSONExporter
 from app.exporters.excel_exporter import ExcelExporter
+
+from app.database.db import SessionLocal
+from app.database.database_service import DatabaseService
 
 
 class DocumentPipeline:
@@ -28,100 +26,155 @@ class DocumentPipeline:
 
         self.agent_pool = AgentPool()
         self.voting_engine = VotingEngine(
-            minimum_successful_agents=min_agents,
-            threshold=threshold
+            minimum_successful_agents=min_agents, threshold=threshold
         )
         self.review_manager = ReviewManager()
         self.boundary_detector = BoundaryDetector()
+        self.db = SessionLocal()
+        self.db_service = DatabaseService(self.db)
 
     def process_document(
-        self,
-        pages: Dict[int, str],
-        document_name: str = "document.pdf"
+        self, pages: Dict[int, str], document_name: str = "document.pdf"
     ) -> Dict[str, Any]:
 
         print("Pipeline started")
 
+        document = self.db_service.create_document(document_name=document_name)
+
         page_classifications: Dict[int, PageClassification] = {}
-        
+
         agent_results_output = []
 
         voting_results_output = []
 
         # Step 1: Page-level classifications and OCR quality check
-        for page_number, text in pages.items():
+        for page_number, page_data in pages.items():
+
             print(f"Processing page {page_number}")
+
+            text = page_data["text"]
+            confidence = page_data["confidence"]
+            word_count = page_data["word_count"]
+            ocr_engine = page_data["ocr_engine"]
 
             # Check OCR quality
             is_poor, poor_reason = OCRService.assess_quality(text)
+
             if is_poor:
                 print(f"Poor OCR quality detected on Page {page_number}: {poor_reason}")
+
                 classification = PageClassification(
                     page_number=page_number,
                     category="Unknown",
                     confidence=0.0,
                     reasoning=poor_reason,
-                    review_required=True
+                    review_required=True,
                 )
+
                 page_classifications[page_number] = classification
 
-                # Submit to human review
                 review_task = ReviewTask(
                     page_number=page_number,
                     reason=poor_reason,
                     confidence=0.0,
                     agent_votes=[],
                     winning_category="Unknown",
-                    reasoning=poor_reason
+                    reasoning=poor_reason,
                 )
+
                 self.review_manager.submit_review(review_task)
                 continue
 
             # Run multi-agent pool
             agent_results = self.agent_pool.classify_page(
-                page_number=page_number,
-                text=text
+                page_number=page_number, text=text
             )
+
             page_agent_data = {
                 "page_number": page_number,
-                "agents": []
+                "ocr": {
+                    "confidence": confidence,
+                    "word_count": word_count,
+                    "engine": ocr_engine,
+                },
+                "agents": [],
             }
 
             for idx, agent_result in enumerate(agent_results, start=1):
 
-                page_agent_data["agents"].append({
-                    "agent_id": idx,
-                    "success": agent_result.success,
-                    "category": getattr(agent_result, "category", None),
-                    "reasoning": getattr(agent_result, "reasoning", None),
-                    "error": getattr(agent_result, "error", None)
-                })
+                page_agent_data["agents"].append(
+                    {
+                        "agent_id": idx,
+                        "success": agent_result.success,
+                        "category": getattr(agent_result, "category", None),
+                        "reasoning": getattr(agent_result, "reasoning", None),
+                        "error": getattr(agent_result, "error", None),
+                    }
+                )
 
-            agent_results_output.append(
-                page_agent_data
-            )
+            agent_results_output.append(page_agent_data)
 
             print(f"Agent results received for page {page_number}")
 
-            # Voting & confidence scoring
             classification, review_task = self.voting_engine.vote(
-                page_number=page_number,
-                results=agent_results
+                page_number=page_number, results=agent_results
             )
-            voting_results_output.append({
-                "page_number": classification.page_number,
-                "category": classification.category,
-                "confidence": classification.confidence,
-                "reasoning": classification.reasoning,
-                "review_required": classification.review_required
-            })
+
+            voting_results_output.append(
+                {
+                    "page_number": classification.page_number,
+                    "category": classification.category,
+                    "confidence": classification.confidence,
+                    "reasoning": classification.reasoning,
+                    "review_required": classification.review_required,
+                }
+            )
 
             print(f"Voting completed for page {page_number}")
 
+            page_classifications[page_number] = classification
+
+            page_record = self.db_service.create_page(
+                document_id=document.id,
+                page_number=page_number,
+                category=classification.category,
+                confidence=classification.confidence,
+                reasoning=classification.reasoning,
+                review_required=classification.review_required,
+                ocr_confidence=confidence,
+                word_count=word_count,
+                ocr_engine=ocr_engine,
+            )
+
+            for idx, agent_result in enumerate(agent_results, start=1):
+                self.db_service.create_agent_result(
+                    page_id=page_record.id,
+                    agent_name=f"Agent {idx}",
+                    success=agent_result.success,
+                    category=getattr(agent_result, "category", None),
+                    reasoning=getattr(agent_result, "reasoning", None),
+                    error=getattr(agent_result, "error", None),
+                )
+
+            self.db_service.create_voting_result(
+                page_id=page_record.id,
+                category=classification.category,
+                confidence=classification.confidence,
+                reasoning=classification.reasoning,
+                review_required=classification.review_required,
+            )
+                
             if review_task:
+
                 self.review_manager.submit_review(review_task)
 
-            page_classifications[page_number] = classification
+                self.db_service.create_review_task(
+                    page_id=page_record.id,
+                    reason=review_task.reason,
+                    confidence=review_task.confidence,
+                    winning_category=review_task.winning_category,
+                    reasoning=review_task.reasoning
+                )
 
         # Step 2: Boundary Detection & Conflict Checking
         # We'll determine boundaries for each page. Page 1 is always a boundary.
@@ -141,10 +194,14 @@ class DocumentPipeline:
                 # Call Gemini boundary detector
                 bd_res = self.boundary_detector.detect_boundary(
                     page_number=curr_page,
-                    text=pages[curr_page],
+                    text=pages[curr_page]["text"],
                     prev_page_number=prev_page,
-                    prev_text=pages[prev_page],
-                    category=curr_class.category if prev_class.category == curr_class.category else f"{prev_class.category} -> {curr_class.category}"
+                    prev_text=pages[prev_page]["text"],
+                    category=(
+                        curr_class.category
+                        if prev_class.category == curr_class.category
+                        else f"{prev_class.category} -> {curr_class.category}"
+                    ),
                 )
                 bd_is_boundary = bd_res["is_boundary"]
                 bd_reason = bd_res["reasoning"]
@@ -156,26 +213,30 @@ class DocumentPipeline:
                     # Conflict: category changed but boundary detector says same doc
                     curr_class.review_required = True
                     is_boundary = True  # Fallback: force boundary partition
-                    self.review_manager.submit_review(ReviewTask(
-                        page_number=curr_page,
-                        reason=f"Conflict: Category changed from {prev_class.category} to {curr_class.category} but boundary detector reports no boundary.",
-                        confidence=curr_class.confidence,
-                        agent_votes=[],
-                        winning_category=curr_class.category,
-                        reasoning=bd_reason or curr_class.reasoning
-                    ))
+                    self.review_manager.submit_review(
+                        ReviewTask(
+                            page_number=curr_page,
+                            reason=f"Conflict: Category changed from {prev_class.category} to {curr_class.category} but boundary detector reports no boundary.",
+                            confidence=curr_class.confidence,
+                            agent_votes=[],
+                            winning_category=curr_class.category,
+                            reasoning=bd_reason or curr_class.reasoning,
+                        )
+                    )
                 elif not cat_changed and bd_is_boundary:
                     # Conflict: category is same but boundary detector says new doc
                     curr_class.review_required = True
                     is_boundary = True  # Follow boundary decision
-                    self.review_manager.submit_review(ReviewTask(
-                        page_number=curr_page,
-                        reason="Conflict: Category is same but boundary detector reports boundary.",
-                        confidence=curr_class.confidence,
-                        agent_votes=[],
-                        winning_category=curr_class.category,
-                        reasoning=bd_reason or curr_class.reasoning
-                    ))
+                    self.review_manager.submit_review(
+                        ReviewTask(
+                            page_number=curr_page,
+                            reason="Conflict: Category is same but boundary detector reports boundary.",
+                            confidence=curr_class.confidence,
+                            agent_votes=[],
+                            winning_category=curr_class.category,
+                            reasoning=bd_reason or curr_class.reasoning,
+                        )
+                    )
                 else:
                     # Agreed boundary decision
                     is_boundary = bd_is_boundary
@@ -195,9 +256,11 @@ class DocumentPipeline:
         def add_segment(seg_id, seg_category, page_list):
             if not page_list:
                 return None
-            
+
             # Segment level confidence is the average of page confidences
-            seg_conf = sum(page_classifications[p].confidence for p in page_list) / len(page_list)
+            seg_conf = sum(page_classifications[p].confidence for p in page_list) / len(
+                page_list
+            )
             # Segment review required is True if any page requires review
             seg_review = any(page_classifications[p].review_required for p in page_list)
 
@@ -206,9 +269,9 @@ class DocumentPipeline:
                 category=seg_category,
                 start_page=page_list[0],
                 end_page=page_list[-1],
-                pages=page_list
+                pages=page_list,
             )
-            
+
             # Return dict matching both Pydantic Segment and extra fields for Exporter
             return {
                 "obj": segment_obj,
@@ -219,8 +282,8 @@ class DocumentPipeline:
                     "end_page": page_list[-1],
                     "pages": page_list,
                     "confidence": seg_conf,
-                    "review_required": seg_review
-                }
+                    "review_required": seg_review,
+                },
             }
 
         segment_extra_list = []
@@ -249,28 +312,16 @@ class DocumentPipeline:
 
         # Create results dictionary
         page_results_list = [page_classifications[p] for p in sorted_pages]
-        
+
         result_dict = {
             "document_name": os.path.basename(document_name),
-
             "agent_results": agent_results_output,
-
             "voting_results": voting_results_output,
-
             "review_queue": [
-                review.model_dump()
-                for review in self.review_manager.get_reviews()
+                review.model_dump() for review in self.review_manager.get_reviews()
             ],
-
-            "page_results": [
-                p.model_dump()
-                for p in page_results_list
-            ],
-
-            "segments": [
-                s.model_dump()
-                for s in segment_objs
-            ]
+            "page_results": [p.model_dump() for p in page_results_list],
+            "segments": [s.model_dump() for s in segment_objs],
         }
 
         # Step 4: Exporting
